@@ -35,10 +35,11 @@ class BookingService {
         throw Exception('Terjadi kesalahan pada server.');
       }
       final data = jsonDecode(response.body);
-      if (response.statusCode == 201)
+      if (response.statusCode == 201) {
         return data;
-      else
+      } else {
         throw Exception(data['message'] ?? 'Booking gagal');
+      }
     } catch (e) {
       throw Exception('Gagal menghubungi server: $e');
     }
@@ -51,8 +52,9 @@ class BookingService {
         Uri.parse('${ApiConfig.baseUrl}/bookings/status/$bookingId'),
         headers: headers,
       );
-      if (response.statusCode == 200)
+      if (response.statusCode == 200) {
         return jsonDecode(response.body)['status'];
+      }
       return 'menunggu_pembayaran';
     } catch (e) {
       return 'menunggu_pembayaran';

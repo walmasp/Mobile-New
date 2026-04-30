@@ -246,7 +246,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                       fillColor: Colors.white,
                     ),
                     hint: const Text("Pilih jumlah orang"),
-                    value: selectedPeopleCount,
+                    initialValue: selectedPeopleCount,
                     items: List.generate(10, (index) => index + 1)
                         .map(
                           (val) => DropdownMenuItem(

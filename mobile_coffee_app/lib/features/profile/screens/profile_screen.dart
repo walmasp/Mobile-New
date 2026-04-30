@@ -1,7 +1,10 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:image_picker/image_picker.dart'; //
+import 'package:image_picker/image_picker.dart'; 
+
+// 🔥 IMPORT LOGIN SCREEN (Pastikan path ini sesuai dengan folder kamu)
+import '../../auth/screens/login_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -16,10 +19,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
   String _email = "Memuat...";
   String _kesanPesan = "Memuat...";
   String? _imagePath; // Untuk menyimpan path foto lokal
-  int _totalPoints = 0; // 🔥 Variabel baru untuk menampung poin reward
+  int _totalPoints = 0; // Variabel baru untuk menampung poin reward
 
   final TextEditingController _bioController = TextEditingController();
-  final ImagePicker _picker = ImagePicker(); //
+  final ImagePicker _picker = ImagePicker(); 
 
   @override
   void initState() {
@@ -27,22 +30,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _loadProfileData();
   }
 
-  // 🔥 MENGAMBIL SEMUA DATA (Termasuk Poin) DARI SHAREDPREFERENCES
+  // MENGAMBIL SEMUA DATA (Termasuk Poin) DARI SHAREDPREFERENCES
   Future<void> _loadProfileData() async {
     final prefs = await SharedPreferences.getInstance();
     setState(() {
-      _nama = prefs.getString('user_name') ?? "Guest User"; //[cite: 11]
-      _email = prefs.getString('user_email') ?? "guest@cafe.com"; //[cite: 11]
+      _nama = prefs.getString('user_name') ?? "Guest User"; 
+      _email = prefs.getString('user_email') ?? "guest@cafe.com"; 
       _kesanPesan =
           prefs.getString('user_bio') ??
-          "Halo! Saya sangat suka kopi dan tempat estetik."; //[cite: 11]
-      _imagePath = prefs.getString('user_image'); //[cite: 11]
+          "Halo! Saya sangat suka kopi dan tempat estetik."; 
+      _imagePath = prefs.getString('user_image'); 
       _totalPoints =
           prefs.getInt('total_points') ?? 0; // Mengambil saldo poin terbaru
     });
   }
 
-  // 🔥 FUNGSI KLAIM DISKON (Reset Poin ke 0)
+  // FUNGSI KLAIM DISKON (Reset Poin ke 0)
   Future<void> _usePoints() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setInt('total_points', 0);
@@ -57,7 +60,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // FUNGSI MEMILIH FOTO DARI GALERI[cite: 11]
+  // FUNGSI MEMILIH FOTO DARI GALERI
   Future<void> _pickProfileImage() async {
     try {
       final XFile? pickedFile = await _picker.pickImage(
@@ -67,9 +70,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
       if (pickedFile != null) {
         final prefs = await SharedPreferences.getInstance();
-        await prefs.setString('user_image', pickedFile.path); //[cite: 11]
+        await prefs.setString('user_image', pickedFile.path); 
         setState(() {
-          _imagePath = pickedFile.path; //[cite: 11]
+          _imagePath = pickedFile.path; 
         });
       }
     } catch (e) {
@@ -77,16 +80,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
     }
   }
 
-  // FUNGSI UNTUK MENYIMPAN KESAN & PESAN BARU[cite: 11]
+  // FUNGSI UNTUK MENYIMPAN KESAN & PESAN BARU
   Future<void> _saveKesanPesan(String newBio) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString('user_bio', newBio); //[cite: 11]
+    await prefs.setString('user_bio', newBio); 
     setState(() {
-      _kesanPesan = newBio; //[cite: 11]
+      _kesanPesan = newBio; 
     });
   }
 
-  // POP-UP UNTUK EDIT KESAN & PESAN[cite: 11]
+  // POP-UP UNTUK EDIT KESAN & PESAN
   void _showEditBioDialog() {
     _bioController.text = _kesanPesan;
     showDialog(
@@ -123,7 +126,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  // FUNGSI LOGOUT DENGAN KONFIRMASI[cite: 11]
+  // FUNGSI LOGOUT DENGAN KONFIRMASI
   Future<void> _logout() async {
     showDialog(
       context: context,
@@ -143,10 +146,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red[400]),
             onPressed: () async {
               final prefs = await SharedPreferences.getInstance();
-              await prefs.clear(); // Hapus semua sesi[cite: 11]
+              await prefs.clear(); // Hapus semua sesi[cite: 12]
+              
               if (!mounted) return;
-              Navigator.pop(context);
-              // Tambahkan navigasi ke LoginScreen di sini
+              
+              // 🔥 PERBAIKAN: Arahkan ke LoginScreen dan hancurkan riwayat layar[cite: 12]
+              Navigator.pushAndRemoveUntil(
+                context,
+                MaterialPageRoute(builder: (context) => const LoginScreen()),
+                (route) => false,
+              );
             },
             child: const Text(
               "Ya, Keluar",
@@ -161,18 +170,18 @@ class _ProfileScreenState extends State<ProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.brown[50], //[cite: 11]
+      backgroundColor: Colors.brown[50], 
       appBar: AppBar(
-        title: const Text("Profil Saya"), //[cite: 11]
+        title: const Text("Profil Saya"), 
         backgroundColor: Colors.brown,
         foregroundColor: Colors.white,
         centerTitle: true,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20), //[cite: 11]
+        padding: const EdgeInsets.all(20), 
         child: Column(
           children: [
-            // --- BAGIAN FOTO PROFIL (BISA DIKLIK)[cite: 11] ---
+            // --- BAGIAN FOTO PROFIL (BISA DIKLIK) ---
             Stack(
               alignment: Alignment.bottomRight,
               children: [
@@ -216,15 +225,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 fontWeight: FontWeight.bold,
                 color: Colors.brown,
               ),
-            ), //[cite: 11]
+            ), 
             Text(
               _email,
               style: TextStyle(fontSize: 16, color: Colors.grey[700]),
-            ), //[cite: 11]
+            ), 
 
             const SizedBox(height: 25),
 
-            // 🔥 BARU: KARTU POIN REWARD (Gaya MCD)
+            // BARU: KARTU POIN REWARD (Gaya MCD)
             Container(
               padding: const EdgeInsets.all(20),
               decoration: BoxDecoration(
@@ -272,7 +281,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
             const SizedBox(height: 15),
 
-            // 🔥 BARU: TOMBOL KLAIM HADIAH (Muncul jika poin >= 200)
+            // BARU: TOMBOL KLAIM HADIAH (Muncul jika poin >= 200)
             if (_totalPoints >= 200)
               Card(
                 color: Colors.orange[100],
@@ -299,7 +308,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                 ),
               ),
 
-            // --- KARTU KESAN & PESAN[cite: 11] ---
+            // --- KARTU KESAN & PESAN ---
             Card(
               elevation: 2,
               shape: RoundedRectangleBorder(
@@ -343,7 +352,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                         fontSize: 16,
                         fontStyle: FontStyle.italic,
                       ),
-                    ), //[cite: 11]
+                    ), 
                   ],
                 ),
               ),
@@ -351,7 +360,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
             const SizedBox(height: 30),
 
-            // --- TOMBOL LOGOUT[cite: 11] ---
+            // --- TOMBOL LOGOUT ---
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
