@@ -16,14 +16,12 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  // 1. Controller untuk menangkap teks yang diketik user
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
 
   bool _obscurePassword = true;
-  bool _isLoading = false; // Indikator loading
+  bool _isLoading = false;
 
-  // 🔥 VARIABEL BIOMETRIK DITAMBAHKAN DI SINI
   final LocalAuthentication auth = LocalAuthentication();
   bool canCheckBiometrics = false;
   List<BiometricType> availableBiometrics = [];
@@ -31,16 +29,15 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   void initState() {
     super.initState();
-    checkBiometrics(); // 🔥 Panggil pengecekan sensor saat layar dibuka
+    checkBiometrics();
   }
 
-  // 🔥 FUNGSI CEK SENSOR HP (Face ID atau Sidik Jari)
   Future<void> checkBiometrics() async {
     try {
       canCheckBiometrics = await auth.canCheckBiometrics;
       if (canCheckBiometrics) {
         availableBiometrics = await auth.getAvailableBiometrics();
-        if (mounted) setState(() {}); // Update tampilan layar
+        if (mounted) setState(() {});
       }
     } catch (e) {
       print("Error cek biometrik: $e");
@@ -56,7 +53,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
   // --- FUNGSI LOGIN KE BACKEND ---
   Future<void> _handleLogin() async {
-    // Validasi input kosong
     if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Email dan Password wajib diisi!")),
@@ -69,7 +65,6 @@ class _LoginScreenState extends State<LoginScreen> {
     });
 
     try {
-      // 2. Tembak API Login dengan timeout 10 detik
       final response = await http
           .post(
             Uri.parse('${ApiConfig.baseUrl}/auth/login'),
@@ -83,31 +78,40 @@ class _LoginScreenState extends State<LoginScreen> {
 
       final responseData = jsonDecode(response.body);
 
-      // Status 200 berarti sukses (sesuai authController.js)
       if (response.statusCode == 200) {
-        // 3. Simpan Token JWT ke memori HP agar tidak perlu login terus
         final prefs = await SharedPreferences.getInstance();
+
+        // 🔥 PERBAIKAN: Simpan Token, Nama, dan Email dari Database ke SharedPreferences
         await prefs.setString('token', responseData['token']);
+
+        // Pastikan struktur JSON dari backendmu mengandung field 'user'
+        if (responseData['user'] != null) {
+          await prefs.setString(
+            'user_name',
+            responseData['user']['nama'] ?? "User",
+          );
+          await prefs.setString(
+            'user_email',
+            responseData['user']['email'] ?? _emailController.text,
+          );
+        }
 
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(responseData['message'] ?? "Login Berhasil!")),
         );
 
-        // 4. Pindah ke Halaman Utama
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(builder: (context) => const MainNavigationScreen()),
         );
       } else {
-        // Gagal login (misal salah password atau email tidak ada)
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(responseData['message'] ?? "Gagal Login")),
         );
       }
     } catch (e) {
-      // Error karena masalah jaringan/koneksi
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text("Error: Tidak dapat terhubung ke server ($e)")),
@@ -121,15 +125,12 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  // Fungsi Login Biometrik (Kembali ke versi aslimu yang sukses)
   Future<void> _handleBiometricLogin() async {
     try {
-      // Teks menyesuaikan apakah HP punya Face ID atau Sidik Jari
       String reason = availableBiometrics.contains(BiometricType.face)
           ? 'Gunakan Face ID untuk masuk ke Cafe App'
           : 'Gunakan sidik jari untuk masuk ke Cafe App';
 
-      // 🔥 KITA GUNAKAN FORMAT ASLIMU YANG SUDAH TERBUKTI JALAN KEMARIN
       bool authenticated = await auth.authenticate(localizedReason: reason);
 
       if (authenticated) {
@@ -161,7 +162,6 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 40),
 
-              // TextField Email
               TextField(
                 controller: _emailController,
                 decoration: const InputDecoration(
@@ -173,7 +173,6 @@ class _LoginScreenState extends State<LoginScreen> {
               ),
               const SizedBox(height: 15),
 
-              // TextField Password
               TextField(
                 controller: _passwordController,
                 obscureText: _obscurePassword,
@@ -198,7 +197,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
               const SizedBox(height: 25),
 
-              // Tombol Login dengan Indikator Loading
               _isLoading
                   ? const CircularProgressIndicator(color: Colors.brown)
                   : ElevatedButton(
@@ -215,7 +213,6 @@ class _LoginScreenState extends State<LoginScreen> {
 
               const SizedBox(height: 15),
 
-              // Tombol untuk pindah ke halaman Register
               TextButton(
                 onPressed: () {
                   Navigator.pushReplacement(
@@ -234,13 +231,11 @@ class _LoginScreenState extends State<LoginScreen> {
                 ),
               ),
 
-              // 🔥 LOGIKA TAMPILAN IKON BIOMETRIK DINAMIS (Muncul jika HP mendukung)
               if (canCheckBiometrics) ...[
                 const SizedBox(height: 10),
                 const Text("Atau masuk dengan"),
                 IconButton(
                   icon: Icon(
-                    // Cek apakah ada Face ID, jika tidak gunakan icon sidik jari
                     availableBiometrics.contains(BiometricType.face)
                         ? Icons.face
                         : Icons.fingerprint,

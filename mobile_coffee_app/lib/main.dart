@@ -2,7 +2,18 @@ import 'package:flutter/material.dart';
 // Import halaman Login sebagai pintu masuk utama
 import 'features/auth/screens/login_screen.dart';
 
-void main() {
+// 🔥 IMPORT SERVICE NOTIFIKASI
+// (Pastikan path import ini sesuai dengan struktur folder kamu ya!)
+import 'data/services/local_notification_service.dart';
+
+// 🔥 PERBAIKAN: Ubah main() menjadi async
+void main() async {
+  // 🔥 WAJIB DITAMBAHKAN KARENA KITA MENGGUNAKAN FUNGSI ASYNC SEBELUM RUNAPP
+  WidgetsFlutterBinding.ensureInitialized();
+
+  // 🔥 JALANKAN INISIALISASI NOTIFIKASI
+  await LocalNotificationService.init();
+
   runApp(const MainApp());
 }
 
