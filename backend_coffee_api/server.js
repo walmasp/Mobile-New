@@ -9,6 +9,10 @@ const app = express();
 app.use(cors());
 app.use(express.json()); // Biar bisa menerima data JSON dari Flutter
 
+const path = require('path');
+// Buka akses folder uploads agar bisa diakses publik
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 const authRoutes = require('./routes/authRoutes');
 app.use('/api/auth', authRoutes);
 

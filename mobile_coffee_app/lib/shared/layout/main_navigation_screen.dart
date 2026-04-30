@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
-import '../../features/mini_games/screens/barista_balance_screen.dart';
+// Hapus import barista balance karena sudah tidak dipanggil langsung dari navbar
+// import '../../features/mini_games/screens/barista_balance_screen.dart';
 import '../../features/profile/screens/profile_screen.dart';
 import '../../data/services/cafe_service.dart';
 import '../../features/menu/screens/menu_screen.dart';
 import '../../features/notifications/screens/notification_screen.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
+// 🔥 Pastikan import ini mengarah ke lokasi file GamesMenuScreen yang benar
+import '../../features/mini_games/screens/games_menu_screen.dart';
 
 class MainNavigationScreen extends StatefulWidget {
   const MainNavigationScreen({super.key});
@@ -15,10 +20,11 @@ class MainNavigationScreen extends StatefulWidget {
 class _MainNavigationScreenState extends State<MainNavigationScreen> {
   int _currentIndex = 0;
 
+  // 🔥 PERBAIKAN: Ubah index ke-2 menjadi GamesMenuScreen
   final List<Widget> _pages = [
     const CafeHomeScreen(),
     const CafeMapsScreen(),
-    const BaristaBalanceScreen(),
+    const GamesMenuScreen(), // Ini sudah benar mengarah ke Lobi Games
     const ProfileScreen(),
   ];
 
@@ -39,7 +45,10 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.coffee), label: 'Cafe'),
           BottomNavigationBarItem(icon: Icon(Icons.map), label: 'Maps'),
-          BottomNavigationBarItem(icon: Icon(Icons.games), label: 'Game'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.sports_esports),
+            label: 'Games',
+          ), // Ikon yang lebih cocok
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profil'),
         ],
       ),
@@ -144,17 +153,117 @@ class _CafeHomeScreenState extends State<CafeHomeScreen> {
   }
 }
 
-// ================= MAPS =================
+// ================= MAPS (LBS) =================
 
-class CafeMapsScreen extends StatelessWidget {
+class CafeMapsScreen extends StatefulWidget {
   const CafeMapsScreen({super.key});
 
   @override
+  State<CafeMapsScreen> createState() => _CafeMapsScreenState();
+}
+
+class _CafeMapsScreenState extends State<CafeMapsScreen> {
+  List cafes = [];
+  bool isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    fetchCafes();
+  }
+
+  // Mengambil data cafe dari database sama seperti di halaman Home
+  Future<void> fetchCafes() async {
+    try {
+      final data = await CafeService.getCafes();
+      setState(() {
+        cafes = data;
+        isLoading = false;
+      });
+    } catch (e) {
+      print("Error maps: $e");
+      setState(() {
+        isLoading = false;
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return const Scaffold(
-      body: Center(
-        child: Text("Ini Halaman Peta LBS", style: TextStyle(fontSize: 18)),
+    // Pusat peta default. Kamu bisa ganti koordinat ini ke kotamu (misal: Yogyakarta/Jakarta)
+    final centerMap = const LatLng(
+      -7.795580,
+      110.369490,
+    ); // Default: Titik Nol Yogyakarta
+
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text("Peta Lokasi Cafe"),
+        backgroundColor: Colors.brown,
+        foregroundColor: Colors.white,
       ),
+      body: isLoading
+          ? const Center(child: CircularProgressIndicator(color: Colors.brown))
+          : FlutterMap(
+              options: MapOptions(initialCenter: centerMap, initialZoom: 13.0),
+              children: [
+                // Layer peta dasar dari OpenStreetMap (Gratis)
+                TileLayer(
+                  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                  userAgentPackageName: 'com.cafe.agregator',
+                ),
+                // Layer penanda lokasi (Marker)
+                MarkerLayer(
+                  markers: cafes.map((cafe) {
+                    // 🔥 LOGIKA KOORDINAT:
+                    // Jika di databasemu belum ada kolom 'latitude' & 'longitude',
+                    // sistem akan membuat titik koordinat buatan yang agak menyebar agar tidak bertumpuk
+                    double lat = cafe['latitude'] != null
+                        ? double.parse(cafe['latitude'].toString())
+                        : (centerMap.latitude + (cafes.indexOf(cafe) * 0.005));
+
+                    double lng = cafe['longitude'] != null
+                        ? double.parse(cafe['longitude'].toString())
+                        : (centerMap.longitude + (cafes.indexOf(cafe) * 0.005));
+
+                    return Marker(
+                      point: LatLng(lat, lng),
+                      width: 120,
+                      height: 80,
+                      child: Column(
+                        children: [
+                          const Icon(
+                            Icons.location_on,
+                            color: Colors.red,
+                            size: 40,
+                          ),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 4,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.white,
+                              borderRadius: BorderRadius.circular(5),
+                              border: Border.all(color: Colors.brown),
+                            ),
+                            child: Text(
+                              cafe['nama_cafe'] ?? 'Cafe',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 10,
+                                color: Colors.brown,
+                              ),
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ),
+              ],
+            ),
     );
   }
 }

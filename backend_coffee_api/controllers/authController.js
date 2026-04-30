@@ -1,6 +1,25 @@
 const db = require('../config/database');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+// 🔥 TAMBAHAN: Import multer dan path untuk upload file
+const multer = require('multer');
+const path = require('path');
+
+// ==========================================
+// KONFIGURASI MULTER (Untuk Foto Profil)
+// ==========================================
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        cb(null, 'uploads/') // Pastikan folder 'uploads' sudah kamu buat di root backend!
+    },
+    filename: function (req, file, cb) {
+        // Nama file unik agar tidak bertabrakan
+        cb(null, 'profile-' + Date.now() + path.extname(file.originalname))
+    }
+});
+
+const upload = multer({ storage: storage }).single('foto_profil');
+
 
 // --- FITUR REGISTER ---
 exports.register = async (req, res) => {
@@ -69,16 +88,19 @@ exports.login = (req, res) => {
                 id: user.id,
                 nama: user.nama,
                 email: user.email,
-                role: user.role
+                role: user.role,
+                foto_profil: user.foto_profil // 🔥 TAMBAHAN: Kirim URL foto profil agar tersimpan di SharedPreferences HP
             }
         });
     });
 };
 
+// --- FITUR GET PROFILE ---
 exports.getProfile = (req, res) => {
     const user_id = req.user.id;
 
-    const query = 'SELECT id, nama, email, role FROM users WHERE id = ?';
+    // 🔥 TAMBAHAN: Masukkan foto_profil di dalam daftar SELECT
+    const query = 'SELECT id, nama, email, role, foto_profil FROM users WHERE id = ?';
 
     db.query(query, [user_id], (err, results) => {
         if (err) return res.status(500).json({ error: err.message });
@@ -90,6 +112,34 @@ exports.getProfile = (req, res) => {
         res.status(200).json({
             message: 'Berhasil ambil profile',
             user: results[0]
+        });
+    });
+};
+
+// ==========================================
+// 🔥 FITUR UPLOAD FOTO PROFIL
+// ==========================================
+exports.uploadProfilePhoto = (req, res) => {
+    upload(req, res, function (err) {
+        // Tangani error multer
+        if (err) return res.status(500).json({ error: err.message });
+        
+        // Cek jika user tidak mengirimkan file gambar
+        if (!req.file) return res.status(400).json({ message: "Tidak ada file yang dipilih" });
+
+        // Path gambar yang akan disimpan di database
+        const fotoUrl = `/uploads/${req.file.filename}`;
+        const userId = req.user.id; // Didapat dari verifyToken
+
+        // Update URL foto di tabel users
+        const query = "UPDATE users SET foto_profil = ? WHERE id = ?";
+        db.query(query, [fotoUrl, userId], (err, result) => {
+            if (err) return res.status(500).json({ error: err.message });
+            
+            res.status(200).json({ 
+                message: "Foto profil berhasil diubah!", 
+                foto_profil: fotoUrl 
+            });
         });
     });
 };
