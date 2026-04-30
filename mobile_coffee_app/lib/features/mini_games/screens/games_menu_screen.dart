@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'barista_balance_screen.dart';
-import 'latte_art_maker_screen.dart';
+import 'espresso_extractor_screen.dart'; // 🔥 Sudah diubah ke Espresso Extractor
 
 class GamesMenuScreen extends StatelessWidget {
   const GamesMenuScreen({super.key});
@@ -49,19 +49,19 @@ class GamesMenuScreen extends StatelessWidget {
 
           const SizedBox(height: 15),
 
-          // --- KARTU GAME 2: LATTE ART MAKER ---
+          // --- KARTU GAME 2: ESPRESSO EXTRACTOR ---
           _buildGameCard(
             context: context,
-            title: "Latte Art Maker",
+            title: "Espresso Extractor",
             description:
-                "Putar HP-mu perlahan untuk menuangkan susu dan membuat pola hati menggunakan Gyroscope.",
+                "Tutup sensor atas HP-mu (Proximity) untuk mengekstrak kopi. Jangan sampai mesin overheat!",
             icon: Icons.coffee_maker,
             color: Colors.brown[700]!,
             onTap: () {
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (context) => const LatteArtMakerScreen(),
+                  builder: (context) => const EspressoExtractorScreen(),
                 ),
               );
             },

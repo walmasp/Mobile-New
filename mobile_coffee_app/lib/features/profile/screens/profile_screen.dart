@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-// TODO: Jangan lupa sesuaikan import ini ke file login kamu yang sebenarnya
-// import '../../auth/screens/login_screen.dart';
+// TODO: Sesuaikan import ini dengan file LoginScreen kamu
+// import '../../features/auth/screens/login_screen.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -11,124 +11,66 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  // Variabel untuk nama & email. Nantinya bisa kamu buat dinamis
-  // mengambil dari SharedPreferences hasil login.
-  String nama = "Mahasiswa Informatika";
-  String email = "mahasiswa@contoh.com";
+  String _nama = "Memuat...";
+  String _email = "Memuat...";
+  String _kesanPesan = "Memuat...";
 
   @override
   void initState() {
     super.initState();
-    _loadUserData();
+    _loadProfileData();
   }
 
-  Future<void> _loadUserData() async {
+  // 🔥 FUNGSI MENGAMBIL DATA DARI DATABASE / SHAREDPREFERENCES
+  Future<void> _loadProfileData() async {
     final prefs = await SharedPreferences.getInstance();
-    // Kalau kamu menyimpan nama & email saat login, bisa di-load di sini:
-    // setState(() {
-    //   nama = prefs.getString('nama') ?? nama;
-    //   email = prefs.getString('email') ?? email;
-    // });
+    setState(() {
+      // Mengambil data sesi. Jika kosong, tampilkan default
+      _nama = prefs.getString('user_name') ?? "Guest User";
+      _email = prefs.getString('user_email') ?? "guest@cafe.com";
+      _kesanPesan =
+          prefs.getString('user_bio') ??
+          "Halo! Saya sangat suka kopi dan tempat estetik.";
+    });
   }
 
-  // 🔥 FITUR POP-UP PREVIEW FOTO PROFIL
-  void _showProfilePicturePreview() {
-    const String profileUrl =
-        'https://cdn-icons-png.flaticon.com/512/3135/3135715.png';
-
+  // 🔥 FUNGSI LOGOUT DENGAN POP-UP KONFIRMASI
+  Future<void> _logout() async {
     showDialog(
       context: context,
-      builder: (BuildContext context) {
-        return Dialog(
-          backgroundColor: Colors.transparent,
-          insetPadding: const EdgeInsets.all(20),
-          child: Stack(
-            alignment: Alignment.center,
-            children: [
-              // InteractiveViewer agar foto bisa di-zoom (dicubit)
-              InteractiveViewer(
-                panEnabled: true,
-                minScale: 0.5,
-                maxScale: 4.0,
-                child: ClipRRect(
-                  borderRadius: BorderRadius.circular(15),
-                  child: Image.network(profileUrl, fit: BoxFit.contain),
-                ),
-              ),
-              // Tombol Close (Silang) di pojok kanan atas
-              Positioned(
-                top: 0,
-                right: 0,
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.5),
-                    shape: BoxShape.circle,
-                  ),
-                  child: IconButton(
-                    icon: const Icon(Icons.close, color: Colors.white),
-                    onPressed: () => Navigator.pop(context),
-                  ),
-                ),
-              ),
-            ],
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+        title: const Text(
+          "Konfirmasi Logout",
+          style: TextStyle(color: Colors.brown),
+        ),
+        content: const Text("Apakah kamu yakin ingin keluar dari aplikasi?"),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context), // Batal
+            child: const Text("Batal", style: TextStyle(color: Colors.grey)),
           ),
-        );
-      },
-    );
-  }
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red[400]),
+            onPressed: () async {
+              final prefs = await SharedPreferences.getInstance();
+              await prefs.clear(); // Hapus sesi
 
-  // 🔥 FITUR POP-UP KONFIRMASI LOGOUT
-  void _showLogoutDialog() {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(15),
-          ),
-          title: const Text(
-            "Konfirmasi Logout",
-            style: TextStyle(fontWeight: FontWeight.bold),
-          ),
-          content: const Text(
-            "Apakah kamu yakin ingin keluar dari aplikasi Cafe App?",
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text("Batal", style: TextStyle(color: Colors.grey)),
+              if (!mounted) return;
+              // Arahkan ke Login dan hapus semua riwayat halaman
+              // Navigator.pushAndRemoveUntil(
+              //   context,
+              //   MaterialPageRoute(builder: (context) => const LoginScreen()),
+              //   (route) => false,
+              // );
+            },
+            child: const Text(
+              "Ya, Keluar",
+              style: TextStyle(color: Colors.white),
             ),
-            ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-              onPressed: () async {
-                // 1. Bersihkan session / token
-                final prefs = await SharedPreferences.getInstance();
-                await prefs.clear();
-
-                if (!mounted) return;
-
-                // 2. Tutup dialog
-                Navigator.pop(context);
-
-                // 3. Arahkan kembali ke halaman Login (Hapus semua history route)
-                // TODO: Buka komentar di bawah ini dan arahkan ke LoginScreen kamu
-                // Navigator.pushAndRemoveUntil(
-                //   context,
-                //   MaterialPageRoute(builder: (context) => const LoginScreen()),
-                //   (Route<dynamic> route) => false,
-                // );
-
-                // Sementara karena belum tahu path loginmu, kita pop sampai awal
-                Navigator.of(context).popUntil((route) => route.isFirst);
-              },
-              child: const Text(
-                "Ya, Keluar",
-                style: TextStyle(color: Colors.white),
-              ),
-            ),
-          ],
-        );
-      },
+          ),
+        ],
+      ),
     );
   }
 
@@ -143,131 +85,60 @@ class _ProfileScreenState extends State<ProfileScreen> {
         centerTitle: true,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20.0),
+        padding: const EdgeInsets.all(20),
         child: Column(
           children: [
-            // ================= 1. FOTO PROFIL DENGAN POP-UP & IKON KAMERA =================
-            GestureDetector(
-              onTap: _showProfilePicturePreview,
-              child: Stack(
-                alignment: Alignment.bottomRight,
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(4),
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.brown, width: 2),
-                    ),
-                    child: const CircleAvatar(
-                      radius: 55,
-                      backgroundImage: NetworkImage(
-                        'https://cdn-icons-png.flaticon.com/512/3135/3135715.png',
-                      ),
-                      backgroundColor: Colors.white,
-                    ),
-                  ),
-                  // Ikon Kamera di pojok kanan bawah foto
-                  Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: Colors.brown,
-                      shape: BoxShape.circle,
-                      border: Border.all(color: Colors.white, width: 2),
-                    ),
-                    child: const Icon(
-                      Icons.camera_alt,
-                      color: Colors.white,
-                      size: 20,
-                    ),
-                  ),
-                ],
-              ),
+            const CircleAvatar(
+              radius: 60,
+              backgroundColor: Colors.brown,
+              child: Icon(Icons.person, size: 60, color: Colors.white),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
             Text(
-              nama,
+              _nama,
               style: const TextStyle(
-                fontSize: 22,
+                fontSize: 24,
                 fontWeight: FontWeight.bold,
                 color: Colors.brown,
               ),
             ),
             Text(
-              email,
+              _email,
               style: TextStyle(fontSize: 16, color: Colors.grey[700]),
             ),
             const SizedBox(height: 30),
 
-            // ================= 2. SARAN & KESAN TPM (SYARAT DOSEN) =================
+            // Kartu Kesan Pesan
             Card(
-              elevation: 4,
-              shadowColor: Colors.brown.withOpacity(0.3),
+              elevation: 2,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(15),
               ),
               child: Padding(
-                padding: const EdgeInsets.all(20.0),
+                padding: const EdgeInsets.all(20),
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Row(
+                    const Row(
                       children: [
-                        Container(
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: Colors.brown[100],
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: const Icon(
-                            Icons.feedback_rounded,
-                            color: Colors.brown,
-                          ),
-                        ),
-                        const SizedBox(width: 15),
-                        const Expanded(
-                          child: Text(
-                            "Saran & Kesan Mata Kuliah TPM",
-                            style: TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.brown,
-                            ),
+                        Icon(Icons.format_quote, color: Colors.brown),
+                        SizedBox(width: 10),
+                        Text(
+                          "Kesan & Pesan",
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
                           ),
                         ),
                       ],
                     ),
-                    const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 10),
-                      child: Divider(thickness: 1),
-                    ),
-                    const Text(
-                      "Kesan:",
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                        color: Colors.black87,
+                    const Divider(),
+                    Text(
+                      _kesanPesan,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontStyle: FontStyle.italic,
                       ),
-                    ),
-                    const SizedBox(height: 5),
-                    const Text(
-                      "Mata kuliah Teknologi dan Pemrograman Mobile (TPM) sangat seru dan menantang! Banyak hal praktikal yang dipelajari, mulai dari perancangan UI/UX responsif, integrasi API Node.js, hingga pemanfaatan sensor dan hardware pada Flutter.",
-                      textAlign: TextAlign.justify,
-                      style: TextStyle(height: 1.4, color: Colors.black54),
-                    ),
-                    const SizedBox(height: 15),
-                    const Text(
-                      "Saran:",
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 14,
-                        color: Colors.black87,
-                      ),
-                    ),
-                    const SizedBox(height: 5),
-                    const Text(
-                      "Semoga kedepannya waktu pengerjaan projek akhir bisa lebih diperpanjang, dan mungkin bisa ditambahkan studi kasus yang lebih mendalam terkait integrasi AI/ML di dalam aplikasi Flutter.",
-                      textAlign: TextAlign.justify,
-                      style: TextStyle(height: 1.4, color: Colors.black54),
                     ),
                   ],
                 ),
@@ -276,26 +147,23 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
             const SizedBox(height: 40),
 
-            // ================= 3. TOMBOL LOGOUT =================
+            // Tombol Logout
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.white,
-                  foregroundColor: Colors.red,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  elevation: 2,
+                  backgroundColor: Colors.brown[800],
+                  padding: const EdgeInsets.symmetric(vertical: 15),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    side: BorderSide(color: Colors.red.shade200, width: 1.5),
+                    borderRadius: BorderRadius.circular(10),
                   ),
                 ),
-                icon: const Icon(Icons.logout_rounded),
+                icon: const Icon(Icons.logout, color: Colors.white),
                 label: const Text(
-                  "Logout dari Aplikasi",
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                  "Logout",
+                  style: TextStyle(fontSize: 16, color: Colors.white),
                 ),
-                onPressed: _showLogoutDialog,
+                onPressed: _logout,
               ),
             ),
           ],

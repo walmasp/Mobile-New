@@ -1,14 +1,13 @@
 import 'package:flutter/material.dart';
-// Hapus import barista balance karena sudah tidak dipanggil langsung dari navbar
-// import '../../features/mini_games/screens/barista_balance_screen.dart';
 import '../../features/profile/screens/profile_screen.dart';
 import '../../data/services/cafe_service.dart';
 import '../../features/menu/screens/menu_screen.dart';
 import '../../features/notifications/screens/notification_screen.dart';
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
-// 🔥 Pastikan import ini mengarah ke lokasi file GamesMenuScreen yang benar
 import '../../features/mini_games/screens/games_menu_screen.dart';
+// 🔥 TAMBAHAN IMPORT UNTUK LOKASI (GEOLOCATOR)
+import 'package:geolocator/geolocator.dart';
 
 class MainNavigationScreen extends StatefulWidget {
   const MainNavigationScreen({super.key});
@@ -20,11 +19,10 @@ class MainNavigationScreen extends StatefulWidget {
 class _MainNavigationScreenState extends State<MainNavigationScreen> {
   int _currentIndex = 0;
 
-  // 🔥 PERBAIKAN: Ubah index ke-2 menjadi GamesMenuScreen
   final List<Widget> _pages = [
     const CafeHomeScreen(),
     const CafeMapsScreen(),
-    const GamesMenuScreen(), // Ini sudah benar mengarah ke Lobi Games
+    const GamesMenuScreen(),
     const ProfileScreen(),
   ];
 
@@ -48,7 +46,7 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
           BottomNavigationBarItem(
             icon: Icon(Icons.sports_esports),
             label: 'Games',
-          ), // Ikon yang lebih cocok
+          ),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Profil'),
         ],
       ),
@@ -78,7 +76,6 @@ class _CafeHomeScreenState extends State<CafeHomeScreen> {
   Future<void> fetchCafes() async {
     try {
       final data = await CafeService.getCafes();
-
       setState(() {
         cafes = data;
         isLoading = false;
@@ -98,7 +95,6 @@ class _CafeHomeScreenState extends State<CafeHomeScreen> {
         title: const Text("Daftar Cafe"),
         backgroundColor: Colors.brown,
         foregroundColor: Colors.white,
-        // 🔥 TAMBAHAN ICON LONCENG NOTIFIKASI
         actions: [
           IconButton(
             icon: const Icon(Icons.notifications_active),
@@ -121,19 +117,15 @@ class _CafeHomeScreenState extends State<CafeHomeScreen> {
               itemCount: cafes.length,
               itemBuilder: (context, index) {
                 final cafe = cafes[index];
-
                 return Card(
                   margin: const EdgeInsets.all(10),
                   child: ListTile(
                     leading: const Icon(Icons.local_cafe, color: Colors.brown),
-
                     title: Text(
                       cafe['nama_cafe'] ?? 'Tanpa Nama',
                       style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
-
                     subtitle: Text(cafe['alamat'] ?? ''),
-
                     onTap: () {
                       Navigator.push(
                         context,
@@ -165,14 +157,44 @@ class CafeMapsScreen extends StatefulWidget {
 class _CafeMapsScreenState extends State<CafeMapsScreen> {
   List cafes = [];
   bool isLoading = true;
+  Position? _currentPosition;
+  final LatLng _defaultCenter = const LatLng(-7.795580, 110.369490);
 
   @override
   void initState() {
     super.initState();
-    fetchCafes();
+    _initMapData();
   }
 
-  // Mengambil data cafe dari database sama seperti di halaman Home
+  Future<void> _initMapData() async {
+    await _getCurrentLocation();
+    await fetchCafes();
+  }
+
+  // 🔥 MENDAPATKAN LOKASI GPS USER
+  Future<void> _getCurrentLocation() async {
+    bool serviceEnabled;
+    LocationPermission permission;
+
+    serviceEnabled = await Geolocator.isLocationServiceEnabled();
+    if (!serviceEnabled) return;
+
+    permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied) {
+      permission = await Geolocator.requestPermission();
+      if (permission == LocationPermission.denied) return;
+    }
+
+    if (permission == LocationPermission.deniedForever) return;
+
+    Position position = await Geolocator.getCurrentPosition(
+      desiredAccuracy: LocationAccuracy.high,
+    );
+    setState(() {
+      _currentPosition = position;
+    });
+  }
+
   Future<void> fetchCafes() async {
     try {
       final data = await CafeService.getCafes();
@@ -188,79 +210,177 @@ class _CafeMapsScreenState extends State<CafeMapsScreen> {
     }
   }
 
+  // 🔥 FUNGSI HITUNG JARAK
+  String _calculateDistance(double cafeLat, double cafeLng) {
+    if (_currentPosition == null) return "Jarak tidak diketahui";
+
+    final Distance distance = const Distance();
+    final double meter = distance(
+      LatLng(_currentPosition!.latitude, _currentPosition!.longitude),
+      LatLng(cafeLat, cafeLng),
+    );
+
+    if (meter < 1000) {
+      return "${meter.toInt()} Meter dari lokasimu";
+    } else {
+      return "${(meter / 1000).toStringAsFixed(1)} KM dari lokasimu";
+    }
+  }
+
+  // 🔥 UI BOTTOM SHEET KETIKA MARKER DITEKAN
+  void _showCafeDetails(Map cafe, double lat, double lng) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: Colors.brown[50],
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  const Icon(Icons.local_cafe, color: Colors.brown, size: 30),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      cafe['nama_cafe'] ?? 'Cafe',
+                      style: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.brown,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const Divider(),
+              const SizedBox(height: 10),
+              Row(
+                children: [
+                  const Icon(
+                    Icons.location_on,
+                    color: Colors.redAccent,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 10),
+                  Text(
+                    _calculateDistance(lat, lng),
+                    style: const TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 10),
+              Text(
+                cafe['alamat'] ?? 'Alamat tidak tersedia',
+                style: TextStyle(color: Colors.grey[800]),
+              ),
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.brown,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  onPressed: () {
+                    Navigator.pop(context); // Tutup bottom sheet
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => MenuScreen(
+                          cafeId: cafe['id'],
+                          cafeName: cafe['nama_cafe'],
+                        ),
+                      ),
+                    );
+                  },
+                  child: const Text(
+                    "Lihat Menu",
+                    style: TextStyle(color: Colors.white),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Pusat peta default. Kamu bisa ganti koordinat ini ke kotamu (misal: Yogyakarta/Jakarta)
-    final centerMap = const LatLng(
-      -7.795580,
-      110.369490,
-    ); // Default: Titik Nol Yogyakarta
+    // Gunakan lokasi user sebagai pusat jika ada, jika tidak pakai default
+    LatLng mapCenter = _currentPosition != null
+        ? LatLng(_currentPosition!.latitude, _currentPosition!.longitude)
+        : _defaultCenter;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Peta Lokasi Cafe"),
+        title: const Text("Eksplorasi Cafe"),
         backgroundColor: Colors.brown,
         foregroundColor: Colors.white,
       ),
       body: isLoading
           ? const Center(child: CircularProgressIndicator(color: Colors.brown))
           : FlutterMap(
-              options: MapOptions(initialCenter: centerMap, initialZoom: 13.0),
+              options: MapOptions(initialCenter: mapCenter, initialZoom: 14.0),
               children: [
-                // Layer peta dasar dari OpenStreetMap (Gratis)
                 TileLayer(
                   urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
                   userAgentPackageName: 'com.cafe.agregator',
                 ),
-                // Layer penanda lokasi (Marker)
                 MarkerLayer(
-                  markers: cafes.map((cafe) {
-                    // 🔥 LOGIKA KOORDINAT:
-                    // Jika di databasemu belum ada kolom 'latitude' & 'longitude',
-                    // sistem akan membuat titik koordinat buatan yang agak menyebar agar tidak bertumpuk
-                    double lat = cafe['latitude'] != null
-                        ? double.parse(cafe['latitude'].toString())
-                        : (centerMap.latitude + (cafes.indexOf(cafe) * 0.005));
+                  markers: [
+                    // Marker Lokasi User (Biru)
+                    if (_currentPosition != null)
+                      Marker(
+                        point: LatLng(
+                          _currentPosition!.latitude,
+                          _currentPosition!.longitude,
+                        ),
+                        width: 50,
+                        height: 50,
+                        child: const Icon(
+                          Icons.my_location,
+                          color: Colors.blue,
+                          size: 30,
+                        ),
+                      ),
 
-                    double lng = cafe['longitude'] != null
-                        ? double.parse(cafe['longitude'].toString())
-                        : (centerMap.longitude + (cafes.indexOf(cafe) * 0.005));
+                    // Marker Daftar Cafe (Cokelat)
+                    ...cafes.map((cafe) {
+                      double lat = cafe['latitude'] != null
+                          ? double.parse(cafe['latitude'].toString())
+                          : _defaultCenter.latitude;
+                      double lng = cafe['longitude'] != null
+                          ? double.parse(cafe['longitude'].toString())
+                          : _defaultCenter.longitude;
 
-                    return Marker(
-                      point: LatLng(lat, lng),
-                      width: 120,
-                      height: 80,
-                      child: Column(
-                        children: [
-                          const Icon(
-                            Icons.location_on,
-                            color: Colors.red,
+                      return Marker(
+                        point: LatLng(lat, lng),
+                        width: 50,
+                        height: 50,
+                        child: GestureDetector(
+                          onTap: () => _showCafeDetails(cafe, lat, lng),
+                          child: const Icon(
+                            Icons.location_pin,
+                            color: Colors.brown,
                             size: 40,
                           ),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 4,
-                              vertical: 2,
-                            ),
-                            decoration: BoxDecoration(
-                              color: Colors.white,
-                              borderRadius: BorderRadius.circular(5),
-                              border: Border.all(color: Colors.brown),
-                            ),
-                            child: Text(
-                              cafe['nama_cafe'] ?? 'Cafe',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 10,
-                                color: Colors.brown,
-                              ),
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  }).toList(),
+                        ),
+                      );
+                    }),
+                  ],
                 ),
               ],
             ),
