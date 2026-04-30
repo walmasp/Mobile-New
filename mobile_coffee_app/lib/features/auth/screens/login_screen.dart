@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:local_auth/local_auth.dart';
-import 'package:http/http.dart' as http; // Untuk tembak API
-import 'dart:convert'; // Untuk handle JSON
-import 'package:shared_preferences/shared_preferences.dart'; // Untuk simpan token/sesi
+import 'package:http/http.dart' as http;
+import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import '../../../shared/layout/main_navigation_screen.dart';
 import 'register_screen.dart';
-import '../../../core/config/api_config.dart'; // Pastikan path ini benar sesuai struktur foldermu
+import 'forgot_password_screen.dart'; // 🔥 Import layar baru
+import '../../../core/config/api_config.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -51,7 +52,6 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  // --- FUNGSI LOGIN KE BACKEND ---
   Future<void> _handleLogin() async {
     if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -60,9 +60,7 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-    });
+    setState(() => _isLoading = true);
 
     try {
       final response = await http
@@ -80,11 +78,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
       if (response.statusCode == 200) {
         final prefs = await SharedPreferences.getInstance();
-
-        // 🔥 PERBAIKAN: Simpan Token, Nama, dan Email dari Database ke SharedPreferences
         await prefs.setString('token', responseData['token']);
 
-        // Pastikan struktur JSON dari backendmu mengandung field 'user'
         if (responseData['user'] != null) {
           await prefs.setString(
             'user_name',
@@ -117,11 +112,7 @@ class _LoginScreenState extends State<LoginScreen> {
         SnackBar(content: Text("Error: Tidak dapat terhubung ke server ($e)")),
       );
     } finally {
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-        });
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -148,6 +139,7 @@ class _LoginScreenState extends State<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.brown[50],
       body: Center(
         child: SingleChildScrollView(
           padding: const EdgeInsets.all(20.0),
@@ -158,7 +150,11 @@ class _LoginScreenState extends State<LoginScreen> {
               const SizedBox(height: 20),
               const Text(
                 "Cafe Agregator",
-                style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+                style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.brown,
+                ),
               ),
               const SizedBox(height: 40),
 
@@ -186,16 +182,35 @@ class _LoginScreenState extends State<LoginScreen> {
                           ? Icons.visibility_off
                           : Icons.visibility,
                     ),
-                    onPressed: () {
-                      setState(() {
-                        _obscurePassword = !_obscurePassword;
-                      });
-                    },
+                    onPressed: () =>
+                        setState(() => _obscurePassword = !_obscurePassword),
                   ),
                 ),
               ),
 
-              const SizedBox(height: 25),
+              // 🔥 TOMBOL LUPA PASSWORD
+              Align(
+                alignment: Alignment.centerRight,
+                child: TextButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const ForgotPasswordScreen(),
+                      ),
+                    );
+                  },
+                  child: const Text(
+                    "Lupa Password?",
+                    style: TextStyle(
+                      color: Colors.brown,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 15),
 
               _isLoading
                   ? const CircularProgressIndicator(color: Colors.brown)
@@ -233,7 +248,10 @@ class _LoginScreenState extends State<LoginScreen> {
 
               if (canCheckBiometrics) ...[
                 const SizedBox(height: 10),
-                const Text("Atau masuk dengan"),
+                const Text(
+                  "Atau masuk dengan",
+                  style: TextStyle(color: Colors.brown),
+                ),
                 IconButton(
                   icon: Icon(
                     availableBiometrics.contains(BiometricType.face)

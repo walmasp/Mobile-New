@@ -1,7 +1,8 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:sensors_plus/sensors_plus.dart';
-import 'package:light/light.dart'; // 🔥 IMPORT SENSOR CAHAYA
+import 'package:light/light.dart';
+import 'package:shared_preferences/shared_preferences.dart'; // 🔥 IMPORT BARU[cite: 15]
 
 class BaristaBalanceScreen extends StatefulWidget {
   const BaristaBalanceScreen({super.key});
@@ -11,7 +12,6 @@ class BaristaBalanceScreen extends StatefulWidget {
 }
 
 class _BaristaBalanceScreenState extends State<BaristaBalanceScreen> {
-  // --- Variabel Game & Accelerometer ---
   int _timeLeft = 30;
   Timer? _timer;
   StreamSubscription<AccelerometerEvent>? _sensorSubscription;
@@ -21,7 +21,6 @@ class _BaristaBalanceScreenState extends State<BaristaBalanceScreen> {
   double _y = 0.0;
   final double _threshold = 4.5;
 
-  // --- Variabel Light Sensor (Sensor Cahaya) ---
   Light? _light;
   StreamSubscription<int>? _lightSubscription;
   int _luxValue = 0;
@@ -41,7 +40,13 @@ class _BaristaBalanceScreenState extends State<BaristaBalanceScreen> {
     super.dispose();
   }
 
-  // 🔥 PENGAMAN SENSOR CAHAYA
+  // 🔥 FUNGSI BARU: TAMBAH 2 POIN KE DATABASE LOKAL[cite: 15]
+  Future<void> _addPoints() async {
+    final prefs = await SharedPreferences.getInstance();
+    int currentPoints = prefs.getInt('total_points') ?? 0;
+    await prefs.setInt('total_points', currentPoints + 2);
+  }
+
   void _initLightSensor() {
     _light = Light();
     try {
@@ -80,7 +85,6 @@ class _BaristaBalanceScreenState extends State<BaristaBalanceScreen> {
       }
     });
 
-    // 🔥 PENGAMAN ACCELEROMETER
     try {
       _sensorSubscription = accelerometerEventStream().listen(
         (event) {
@@ -118,15 +122,15 @@ class _BaristaBalanceScreenState extends State<BaristaBalanceScreen> {
     });
   }
 
-  void _winGame() {
+  // 🔥 UPDATE: MENAMBAHKAN POIN SAAT MENANG[cite: 15]
+  void _winGame() async {
     _timer?.cancel();
     _sensorSubscription?.cancel();
+    await _addPoints(); // Simpan 2 poin reward
+
     setState(() {
       _isPlaying = false;
     });
-
-    // Notifikasi dimatikan sementara agar tidak error
-    // await NotificationService.createNotification(...);
 
     _showPrizeDialog();
   }
@@ -147,7 +151,7 @@ class _BaristaBalanceScreenState extends State<BaristaBalanceScreen> {
               Icon(Icons.local_cafe, size: 60, color: Colors.brown),
               SizedBox(height: 15),
               Text(
-                "Kamu jago menyeimbangkan kopi!\n\nTunjukkan layar ini ke kasir saat check-in untuk klaim Gorengan Gratis / Diskon 10%.",
+                "Kamu jago menyeimbangkan kopi! \n\nKamu mendapatkan +2 Poin Reward. Cek progres diskonmu di profil!",
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 16),
               ),
@@ -157,7 +161,7 @@ class _BaristaBalanceScreenState extends State<BaristaBalanceScreen> {
             Center(
               child: ElevatedButton(
                 onPressed: () => Navigator.of(context).pop(),
-                child: const Text("Tutup & Klaim Nanti"),
+                child: const Text("Tutup"),
               ),
             ),
           ],
